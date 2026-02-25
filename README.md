@@ -1,15 +1,16 @@
 <div align="center">
 
-# 🚩 CTF-TOOLS — Image Forensics Toolkit
+# 🚩 CTF-TOOLS — Image Forensics & Steganography Toolkit
 
 ![Python](https://img.shields.io/badge/Python-3.x-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/License-GPL%20v3-blue?style=for-the-badge)
 ![CTF](https://img.shields.io/badge/CTF-Forensics-red?style=for-the-badge&logo=hackthebox&logoColor=white)
 ![Category](https://img.shields.io/badge/Category-Steganography%20%7C%20Forensics-purple?style=for-the-badge)
+![LSB](https://img.shields.io/badge/LSB-Flag%20Finder-green?style=for-the-badge)
 
-**A collection of Python-based image forensics and repair tools for Capture The Flag (CTF) competitions.**
+**A collection of Python-based image forensics, repair, and steganography tools for Capture The Flag (CTF) competitions.**
 
-Repair corrupted image files, validate headers, fix CRC checksums, and recover hidden data from PNG, JPEG, GIF, and BMP files — essential tools for solving steganography and forensics challenges.
+Repair corrupted image files, validate headers, fix CRC checksums, extract LSB-hidden flags across multiple encodings, and recover hidden data from PNG, JPEG, GIF, and BMP files — essential tools for solving steganography and forensics challenges.
 
 </div>
 
@@ -35,6 +36,7 @@ Repair corrupted image files, validate headers, fix CRC checksums, and recover h
 | **Image-Fixer.py** | Universal image repair — validates magic bytes, parses chunks, fixes headers | PNG, JPEG, GIF, BMP |
 | **OriginalPNG-fixer.py** | Interactive PNG repair — CRC validation, chunk type repair, manual header correction | PNG |
 | **png-fixer.py** | Automated PNG repair — header alignment, IHDR detection, chunk integrity validation | PNG |
+| **lsb_flag_finder.py** | Extract LSB data → decode across ASCII, Base64, Base32, ROT13 → auto-grep CTF flags | PNG, BMP, TIFF |
 
 ---
 
@@ -50,6 +52,10 @@ Repair corrupted image files, validate headers, fix CRC checksums, and recover h
 | **Interactive Repair** | OriginalPNG-fixer offers manual chunk type selection for complex corruptions |
 | **Auto-Truncation** | Removes trailing garbage data after IEND chunk |
 | **Multi-Format** | Single tool (Image-Fixer.py) handles PNG, JPEG, GIF, and BMP formats |
+| **LSB Extraction** | Extracts 1–4 bit LSB data from any combination of R, G, B, A channels |
+| **Multi-Encoding Decode** | Decodes extracted data as ASCII, Base64, Base32, and ROT13 simultaneously |
+| **Flag Auto-Grep** | Regex-based search for common CTF flag formats (flag{}, CTF{}, picoCTF{}, HTB{}, etc.) |
+| **Custom Flag Patterns** | Support for custom flag regex via `--flag-format` for any CTF competition |
 
 ---
 
@@ -62,6 +68,9 @@ Repair corrupted image files, validate headers, fix CRC checksums, and recover h
 | **Checksum** | `binascii.crc32` | CRC32 computation for PNG chunk validation |
 | **I/O** | `sys` + file I/O | Command-line args and binary file read/write |
 | **Architecture** | OOP (`FileRepairer` class) | Modular, extensible repair framework |
+| **Image Processing** | `Pillow (PIL)` | Pixel-level access for LSB extraction |
+| **Encoding** | `base64`, `codecs` | Base64, Base32, ROT13 decoding |
+| **Pattern Matching** | `re` (regex) | Flag format detection across encodings |
 
 ---
 
@@ -118,6 +127,55 @@ python3 Image-Manipulation/png-fixer.py <input.png> <output.png>
 
 - Fully automated — no user interaction needed
 - Best for quick fixes during timed CTF competitions
+
+### lsb_flag_finder.py (LSB Steganography — Flag Extraction)
+
+```bash
+# Install dependency
+pip install Pillow
+```
+
+```bash
+# Basic — extract 1-bit LSB from RGB and search all encodings
+python3 LSB-Flag-Finder/lsb_flag_finder.py image.png
+
+# Extract 2-bit LSB from Red and Green channels only
+python3 LSB-Flag-Finder/lsb_flag_finder.py image.png --bits 2 --channels RG
+
+# Search only in Base64-decoded output
+python3 LSB-Flag-Finder/lsb_flag_finder.py image.png --encoding base64
+
+# Custom flag format for a specific CTF
+python3 LSB-Flag-Finder/lsb_flag_finder.py image.png --flag-format "myctf{.*}"
+
+# Verbose — show decoded previews even without flag matches
+python3 LSB-Flag-Finder/lsb_flag_finder.py image.png -v
+
+# Dump raw LSB bytes for manual analysis
+python3 LSB-Flag-Finder/lsb_flag_finder.py image.png --raw > lsb_dump.bin
+```
+
+**Example Output:**
+```
+$ python3 LSB-Flag-Finder/lsb_flag_finder.py challenge.png
+[*] Extracting 1-bit LSB from RGB channels …
+[*] Got 921,600 bytes
+
+[+] FLAGS FOUND  [ASCII]
+    >>> flag{lsb_is_the_classic_stego}
+
+[+] FLAGS FOUND  [ROT13]
+    >>> flag{rot13_hidden_message}
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--bits` | `1` | LSBs to extract per channel (1–4) |
+| `--channels` | `RGB` | Channels to read (any combo of R, G, B, A) |
+| `--encoding` | `all` | `ascii`, `base64`, `base32`, `rot13`, or `all` |
+| `--flag-format` | — | Custom regex for your CTF's flag format |
+| `--raw` | — | Dump raw bytes to stdout |
+| `-v` | — | Verbose — show previews without flag matches |
 
 ---
 
@@ -200,6 +258,8 @@ sTER  tEXt  tIME  tRNS  zTXt
 | Hidden data in metadata | OriginalPNG-fixer.py | Suspicious tEXt/iTXt chunks |
 | JPEG missing JFIF header | Image-Fixer.py | SOI present but APP0 missing |
 | Flag hidden after IEND | Manual hex analysis | Data appended after PNG end marker |
+| Flag hidden in LSB | lsb_flag_finder.py | LSB steganography across RGB/A channels |
+| Encoded flag in image | lsb_flag_finder.py | Base64/Base32/ROT13 encoded flags in pixel data |
 
 ---
 
@@ -211,6 +271,9 @@ CTF-TOOLS/
 │   ├── Image-Fixer.py           # Universal format repair (OOP-based)
 │   ├── OriginalPNG-fixer.py     # Interactive PNG-specific repair
 │   └── png-fixer.py             # Automated PNG repair
+├── LSB-Flag-Finder/
+│   ├── lsb_flag_finder.py       # LSB extraction + multi-encoding flag grep
+│   └── requirements.txt         # Pillow dependency
 ├── LICENSE                       # GPL v3
 └── README.md                     # Documentation
 ```
@@ -223,9 +286,9 @@ Contributions welcome! Ideas for expansion:
 
 - 🔊 **Audio Forensics** — WAV/MP3 header repair and spectrogram analysis
 - 📦 **ZIP/RAR Repair** — Archive header fixing for misc challenges
-- 🔐 **Steganography Detection** — LSB extraction, zsteg/stegsolve integration
-- 📋 **PCAP Analysis** — Network forensics toolkit
+- � **PCAP Analysis** — Network forensics toolkit
 - 🧮 **Crypto Helpers** — Common cipher solvers (Caesar, XOR, Vigenère)
+- 🔍 **Hex Analysis** — Automated hidden data detection after IEND/EOF markers
 
 ---
 
